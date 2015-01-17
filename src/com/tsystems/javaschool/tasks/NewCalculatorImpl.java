@@ -24,20 +24,23 @@ public class NewCalculatorImpl implements Calculator
     {
         //translate to reverse polish notation
         statement = toRPN(statement);
-
+        System.out.println(statement);
 
         Stack<IExpression> stack = new Stack<IExpression>();
 
         String[] tokenList = statement.split(" ");
-        for (String s : tokenList) {
-            if (isOperator(s)) {
+        for (String s : tokenList)
+        {
+            if (isOperator(s))
+            {
                 IExpression rightExpression = stack.pop();
                 IExpression leftExpression = stack.pop();
                 IExpression operator = getOperatorInstance(s, leftExpression,
                         rightExpression);
                 double result = operator.interpret();
                 stack.push(new NumberExpression(result));
-            } else {
+            } else
+            {
                 IExpression i = new NumberExpression(s);
                 stack.push(i);
             }
@@ -45,7 +48,8 @@ public class NewCalculatorImpl implements Calculator
         return String.valueOf(stack.pop().interpret());
     }
 
-    public static boolean isOperator(String s) {
+    public static boolean isOperator(String s)
+    {
         if (s.equals("+") || s.equals("-") || s.equals("*"))
             return true;
         else
@@ -55,7 +59,8 @@ public class NewCalculatorImpl implements Calculator
     public static IExpression getOperatorInstance(String s, IExpression left, IExpression right)
     {
         char c = s.charAt(0);
-        switch (c) {
+        switch (c)
+        {
             case '+':
                 return new PlusExpression(left, right);
             case '-':
@@ -68,46 +73,62 @@ public class NewCalculatorImpl implements Calculator
 
 
     private int curPosition = 0;
+
     private String toRPN(String statement)
     {
-        /**
-         * First we translate to reverse-polish notation
-         */
         String n = tokenizer.next();
 
-        LinkedList<String> pn = new LinkedList<String>();
+        StringBuilder rnp = new StringBuilder();
         Stack<String> st = new Stack<String>();
 
-        while (n != null) {
-            if (NewCalculatorImpl.Tokenizer.isNumber(n)) {
-                pn.add(n);
-            } else if (NewCalculatorImpl.Tokenizer.isLP(n)) {
+        while (n != null)
+        {
+            if (Tokenizer.isNumber(n))
+            {
+                rnp.append(n);
+                rnp.append(" ");
+            }
+            else if (Tokenizer.isLP(n))
+            {
                 st.push(n);
-            } else if (NewCalculatorImpl.Tokenizer.isRP(n)) {
+            }
+            else if (Tokenizer.isRP(n))
+            {
                 String lp = st.pop();
-                while (!NewCalculatorImpl.Tokenizer.isLP(lp)) {
-                    pn.add(lp);
+                while (!Tokenizer.isLP(lp))
+                {
+                    rnp.append(lp);
+                    rnp.append(" ");
                     lp = st.pop();
                 }
-            } else if (NewCalculatorImpl.Tokenizer.isOp(n)) {
-                try {
+            }
+            else if (Tokenizer.isOp(n))
+            {
+                try
+                {
                     String op = st.peek();
-                    while (st.size() > 0 && NewCalculatorImpl.Tokenizer.isOp(op) && NewCalculatorImpl.Tokenizer.getPriority(n) <= NewCalculatorImpl.Tokenizer.getPriority(op)) {
-                        pn.add(st.pop());
+                    while (st.size() > 0 &&
+                            Tokenizer.isOp(op) &&
+                            Tokenizer.getPriority(n) <= Tokenizer.getPriority(op))
+                    {
+                        rnp.append(st.pop());
+                        rnp.append(" ");
                         op = st.peek();
                     }
-                } catch (EmptyStackException e) { }
+                }
+                catch (EmptyStackException e) { }
                 st.push(n);
             }
 
             n = tokenizer.next();
         }
 
-        while (!st.empty()) {
-            pn.add(st.pop());
+        while (!st.empty())
+        {
+            rnp.append(st.pop() + " ");
         }
 
-        return null;
+        return rnp.toString();
     }
 
     private String extractNumber(String statement)
@@ -123,8 +144,6 @@ public class NewCalculatorImpl implements Calculator
         }
         return statement.substring(start, curPosition);
     }
-
-
 
 
     private static class Tokenizer
@@ -164,7 +183,15 @@ public class NewCalculatorImpl implements Calculator
          */
         static boolean isNumber(String s)
         {
-            return signs.indexOf(s) == -1;
+            try
+            {
+                Double.parseDouble(s);
+                return true;
+            }
+            catch (NumberFormatException e)
+            {
+                return false;
+            }
         }
 
         /**
@@ -253,10 +280,10 @@ public class NewCalculatorImpl implements Calculator
 
             if (signs.indexOf(content.charAt(position)) > -1) return Character.toString(content.charAt(position++));
 
-            while (position < content.length() &&
-                    signs.indexOf(content.charAt(position)) == -1)
+            while (position < content.length() && signs.indexOf(content.charAt(position)) == -1)
             {
-                if (digits.indexOf(content.charAt(position)) > -1) sb.append(content.charAt(position));
+                if (digits.indexOf(content.charAt(position)) > -1 || content.charAt(position) == '.')
+                    sb.append(content.charAt(position));
                 position++;
             }
 

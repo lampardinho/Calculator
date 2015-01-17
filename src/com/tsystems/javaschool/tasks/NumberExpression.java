@@ -12,7 +12,7 @@ public class NumberExpression implements IExpression
     }
 
     public NumberExpression(String s) {
-        number = Integer.parseInt(s);
+        number = Double.parseDouble(s);
     }
 
     @Override
