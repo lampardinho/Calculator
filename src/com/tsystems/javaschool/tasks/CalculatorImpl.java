@@ -21,7 +21,7 @@ public class CalculatorImpl implements Calculator {
     
 
     @Override
-    public String evaluate(String str) {
+    public String evaluate(String statement) {
 
         /**
          * First we translate to reverse-polish notation
