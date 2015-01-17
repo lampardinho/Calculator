@@ -1,21 +1,19 @@
 package com.tsystems.javaschool.tasks;
 
 import java.util.EmptyStackException;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Stack;
 
 /**
  * Created by Kolia on 17.01.2015.
  */
-public class NewCalculatorImpl implements Calculator
+public class CalculatorImpl implements Calculator
 {
-    public static String input = "12.541+4";
+    public static String input = "-12)1//(";
     private Tokenizer tokenizer = new Tokenizer(input);
 
     public static void main(String[] args)
     {
-        Calculator c = new NewCalculatorImpl();
+        Calculator c = new CalculatorImpl();
         System.out.println(c.evaluate(input));
     }
 
@@ -31,30 +29,23 @@ public class NewCalculatorImpl implements Calculator
         String[] tokenList = statement.split(" ");
         for (String s : tokenList)
         {
-            if (isOperator(s))
+            if (Tokenizer.isOp(s))
             {
                 IExpression rightExpression = stack.pop();
                 IExpression leftExpression = stack.pop();
-                IExpression operator = getOperatorInstance(s, leftExpression,
-                        rightExpression);
+                IExpression operator = getOperatorInstance(s, leftExpression, rightExpression);
                 double result = operator.interpret();
                 stack.push(new NumberExpression(result));
-            } else
+            }
+            else
             {
                 IExpression i = new NumberExpression(s);
                 stack.push(i);
             }
         }
-        return String.valueOf(stack.pop().interpret());
+        return String.format("%.4f", stack.pop().interpret());
     }
 
-    public static boolean isOperator(String s)
-    {
-        if (s.equals("+") || s.equals("-") || s.equals("*"))
-            return true;
-        else
-            return false;
-    }
 
     public static IExpression getOperatorInstance(String s, IExpression left, IExpression right)
     {
@@ -67,12 +58,12 @@ public class NewCalculatorImpl implements Calculator
                 return new MinusExpression(left, right);
             case '*':
                 return new MultiplyExpression(left, right);
+            case '/':
+                return new DivideExpression(left, right);
         }
         return null;
     }
 
-
-    private int curPosition = 0;
 
     private String toRPN(String statement)
     {
@@ -129,20 +120,6 @@ public class NewCalculatorImpl implements Calculator
         }
 
         return rnp.toString();
-    }
-
-    private String extractNumber(String statement)
-    {
-        int start = curPosition;
-        for (int i = start; i < statement.length(); i++)
-        {
-            if (!Character.isDigit(statement.charAt(i)) && statement.charAt(i) != '.')
-            {
-                curPosition = i;
-                break;
-            }
-        }
-        return statement.substring(start, curPosition);
     }
 
 
@@ -232,36 +209,6 @@ public class NewCalculatorImpl implements Calculator
             return s.length() == 1 && rparentheses.indexOf(s) > -1;
         }
 
-        /**
-         * Know how to operate with operations. Only binary operations are supported
-         *
-         * @param s1 first operand
-         * @param s2 second operand
-         * @param op operation
-         * @return result of applied operation
-         */
-        static String compute(String s1, String s2, String op)
-        {
-            double i1 = Double.parseDouble(s1);
-            double i2 = Double.parseDouble(s2);
-
-            if ("*".equals(op))
-            {
-                return String.format("%.4f", (i2 * i1));
-            } else if ("/".equals(op))
-            {
-                return String.format("%.4f", i2 / i1);
-            } else if ("+".equals(op))
-            {
-                return String.format("%.4f", (i2 + i1));
-            } else if ("-".equals(op))
-            {
-                return String.format("%.4f", (i2 - i1));
-            }
-
-            throw new IllegalArgumentException();
-
-        }
 
         /**
          * @return next token or null
@@ -290,6 +237,4 @@ public class NewCalculatorImpl implements Calculator
             return sb.toString();
         }
     }
-
-
 }
