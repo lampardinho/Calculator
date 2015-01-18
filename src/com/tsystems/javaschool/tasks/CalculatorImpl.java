@@ -9,12 +9,10 @@ import java.util.Stack;
  */
 public class CalculatorImpl implements Calculator
 {
-    public static String input = "-7.06*6.57l67/2+8.76576j";
-
     public static void main(String[] args)
     {
         Calculator c = new CalculatorImpl();
-        System.out.println(c.evaluate(input));
+        System.out.println(c.evaluate("(1+38)*4-5"));
     }
 
     @Override
@@ -29,8 +27,6 @@ public class CalculatorImpl implements Calculator
             return null;
         }
 
-        System.out.println(statement);
-
         Stack<IExpression> stack = new Stack<IExpression>();
 
         String[] tokenList = statement.split(" ");
@@ -39,7 +35,7 @@ public class CalculatorImpl implements Calculator
             if (Tokenizer.isOperation(s))
             {
                 IExpression rightExpression = stack.pop();
-                IExpression leftExpression = stack.isEmpty() ? null : stack.pop();
+                IExpression leftExpression = stack.isEmpty() ? null : stack.pop(); //support of unary + and -
                 IExpression operator = getOperatorInstance(s, leftExpression, rightExpression);
                 double result = operator.interpret();
                 stack.push(new NumberExpression(result));
@@ -50,7 +46,10 @@ public class CalculatorImpl implements Calculator
                 stack.push(i);
             }
         }
-        return String.format("%.4f", stack.pop().interpret());
+
+        double value = stack.pop().interpret();
+        double roundedValue = (double)Math.round(value * 10000) / 10000;
+        return String.format("%.4f", roundedValue);
     }
 
 
@@ -84,17 +83,14 @@ public class CalculatorImpl implements Calculator
         {
             if (Tokenizer.isNumber(str))
             {
-                System.out.println(str + " isNumber");
                 rnp.append(str).append(" ");
             }
             else if (Tokenizer.isLeftParentheses(str))
             {
-                System.out.println(str + " isLeftParentheses");
                 stack.push(str);
             }
             else if (Tokenizer.isRightParentheses(str))
             {
-                System.out.println(str + " isRightParentheses");
                 try
                 {
                     String lp = stack.pop();
@@ -111,8 +107,6 @@ public class CalculatorImpl implements Calculator
             }
             else if (Tokenizer.isOperation(str))
             {
-                System.out.println(str + " isOperation");
-
                 while (!stack.isEmpty())
                 {
                     String op = stack.peek();
@@ -126,7 +120,6 @@ public class CalculatorImpl implements Calculator
             }
             else
             {
-                System.out.println(str + " else");
                 throw new ParseException("Can't parse " + statement, statement.indexOf(str));
             }
         }
@@ -162,22 +155,28 @@ public class CalculatorImpl implements Calculator
         {
             StringBuilder sb = new StringBuilder();
 
-            while (position < content.length()
-                    && !isSign(content.charAt(position))
-                    && !Character.isDigit(content.charAt(position)))
-            {
-                position++;
-            }
             if (position == content.length())
                 return null;
 
-            if (isSign(content.charAt(position)))
-                return Character.toString(content.charAt(position++));
-
-            while (position < content.length() && !isSign(content.charAt(position)))
+            char currentChar = content.charAt(position);
+            if (isSign(currentChar))
             {
-                if (Character.isDigit(content.charAt(position)) || isDecimalDelimiter(content.charAt(position)))
-                    sb.append(content.charAt(position));
+                position++;
+                return Character.toString(currentChar);
+            }
+            else if (isDigitOrDelimiter(currentChar))
+            {
+                while (position < content.length() && isDigitOrDelimiter(currentChar))
+                {
+                    sb.append(currentChar);
+                    position++;
+                    if (position < content.length())
+                        currentChar = content.charAt(position);
+                }
+            }
+            else
+            {
+                sb.append(currentChar);
                 position++;
             }
 
@@ -187,6 +186,11 @@ public class CalculatorImpl implements Calculator
         static boolean isSign(char c)
         {
             return signs.indexOf(c) != -1;
+        }
+
+        static boolean isDigitOrDelimiter(char c)
+        {
+            return Character.isDigit(c) || c == decimalDelimiter;
         }
 
         static boolean isOperation(String s)
@@ -205,11 +209,6 @@ public class CalculatorImpl implements Calculator
             {
                 return false;
             }
-        }
-
-        static boolean isDecimalDelimiter(char c)
-        {
-            return c == decimalDelimiter;
         }
 
         static boolean isLeftParentheses(String s)
