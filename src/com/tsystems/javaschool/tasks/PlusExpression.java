@@ -8,13 +8,18 @@ public class PlusExpression implements IExpression
     IExpression leftExpression;
     IExpression rightExpression;
 
-    public PlusExpression(IExpression leftExpression, IExpression rightExpression) {
+    public PlusExpression(IExpression leftExpression, IExpression rightExpression)
+    {
         this.leftExpression = leftExpression;
         this.rightExpression = rightExpression;
     }
 
     @Override
-    public double interpret() {
+    public double interpret()
+    {
+        if (leftExpression == null)
+            return rightExpression.interpret();
+        
         return leftExpression.interpret() + rightExpression.interpret();
     }
 

@@ -1,5 +1,6 @@
 package com.tsystems.javaschool.tasks;
 
+import java.text.ParseException;
 import java.util.EmptyStackException;
 import java.util.Stack;
 
@@ -8,8 +9,7 @@ import java.util.Stack;
  */
 public class CalculatorImpl implements Calculator
 {
-    public static String input = "-12)1//(";
-    private Tokenizer tokenizer = new Tokenizer(input);
+    public static String input = "-7.06*6.57l67/2+8.76576j";
 
     public static void main(String[] args)
     {
@@ -20,8 +20,15 @@ public class CalculatorImpl implements Calculator
     @Override
     public String evaluate(String statement)
     {
-        //translate to reverse polish notation
-        statement = toRPN(statement);
+        try
+        {
+            statement = toReversePolishNotation(statement);
+        }
+        catch (ParseException e)
+        {
+            return null;
+        }
+
         System.out.println(statement);
 
         Stack<IExpression> stack = new Stack<IExpression>();
@@ -29,10 +36,10 @@ public class CalculatorImpl implements Calculator
         String[] tokenList = statement.split(" ");
         for (String s : tokenList)
         {
-            if (Tokenizer.isOp(s))
+            if (Tokenizer.isOperation(s))
             {
                 IExpression rightExpression = stack.pop();
-                IExpression leftExpression = stack.pop();
+                IExpression leftExpression = stack.isEmpty() ? null : stack.pop();
                 IExpression operator = getOperatorInstance(s, leftExpression, rightExpression);
                 double result = operator.interpret();
                 stack.push(new NumberExpression(result));
@@ -47,7 +54,7 @@ public class CalculatorImpl implements Calculator
     }
 
 
-    public static IExpression getOperatorInstance(String s, IExpression left, IExpression right)
+    private static IExpression getOperatorInstance(String s, IExpression left, IExpression right)
     {
         char c = s.charAt(0);
         switch (c)
@@ -65,58 +72,68 @@ public class CalculatorImpl implements Calculator
     }
 
 
-    private String toRPN(String statement)
+    private String toReversePolishNotation(String statement) throws ParseException
     {
-        String n = tokenizer.next();
+        Tokenizer tokenizer = new Tokenizer(statement);
 
         StringBuilder rnp = new StringBuilder();
-        Stack<String> st = new Stack<String>();
+        Stack<String> stack = new Stack<String>();
 
-        while (n != null)
+        String str;
+        while ((str = tokenizer.getNextToken()) != null)
         {
-            if (Tokenizer.isNumber(n))
+            if (Tokenizer.isNumber(str))
             {
-                rnp.append(n);
-                rnp.append(" ");
+                System.out.println(str + " isNumber");
+                rnp.append(str).append(" ");
             }
-            else if (Tokenizer.isLP(n))
+            else if (Tokenizer.isLeftParentheses(str))
             {
-                st.push(n);
+                System.out.println(str + " isLeftParentheses");
+                stack.push(str);
             }
-            else if (Tokenizer.isRP(n))
+            else if (Tokenizer.isRightParentheses(str))
             {
-                String lp = st.pop();
-                while (!Tokenizer.isLP(lp))
-                {
-                    rnp.append(lp);
-                    rnp.append(" ");
-                    lp = st.pop();
-                }
-            }
-            else if (Tokenizer.isOp(n))
-            {
+                System.out.println(str + " isRightParentheses");
                 try
                 {
-                    String op = st.peek();
-                    while (st.size() > 0 &&
-                            Tokenizer.isOp(op) &&
-                            Tokenizer.getPriority(n) <= Tokenizer.getPriority(op))
+                    String lp = stack.pop();
+                    while (!Tokenizer.isLeftParentheses(lp))
                     {
-                        rnp.append(st.pop());
-                        rnp.append(" ");
-                        op = st.peek();
+                        rnp.append(lp).append(" ");
+                        lp = stack.pop();
                     }
                 }
-                catch (EmptyStackException e) { }
-                st.push(n);
+                catch (EmptyStackException e)
+                {
+                    throw new ParseException("Can't parse " + statement, statement.indexOf(str));
+                }
             }
+            else if (Tokenizer.isOperation(str))
+            {
+                System.out.println(str + " isOperation");
 
-            n = tokenizer.next();
+                while (!stack.isEmpty())
+                {
+                    String op = stack.peek();
+                    if (Tokenizer.isOperation(op) && Tokenizer.getPriority(str) <= Tokenizer.getPriority(op))
+                        rnp.append(stack.pop()).append(" ");
+                    else
+                        break;
+                }
+
+                stack.push(str);
+            }
+            else
+            {
+                System.out.println(str + " else");
+                throw new ParseException("Can't parse " + statement, statement.indexOf(str));
+            }
         }
 
-        while (!st.empty())
+        while (!stack.empty())
         {
-            rnp.append(st.pop() + " ");
+            rnp.append(stack.pop()).append(" ");
         }
 
         return rnp.toString();
@@ -125,39 +142,58 @@ public class CalculatorImpl implements Calculator
 
     private static class Tokenizer
     {
+        static final char decimalDelimiter = '.';
+        static final String leftParentheses = "(";
+        static final String rightParentheses = ")";
+        static final String priority2_Ops = "*/";
+        static final String priority1_Ops = "+-";
+        static final String operations = priority1_Ops + priority2_Ops;
+        static final String signs = operations + leftParentheses + rightParentheses;
+
         String content;
         int position = 0;
-
-        static final String lparentheses = "(";
-        static final String rparentheses = ")";
-        static final String priority2Ops = "*/";
-        static final String priority1Ops = "+-";
-        static final String ops = priority1Ops + priority2Ops;
-        static final String signs = ops + lparentheses + rparentheses;
-        static final String digits = "0123456789";
 
         Tokenizer(String content)
         {
             this.content = content;
         }
 
-        /**
-         * Check if token is operation
-         *
-         * @param s token to check
-         * @return true if token is operation
-         */
-        static boolean isOp(String s)
+        public String getNextToken()
         {
-            return s.length() == 1 && ops.indexOf(s) > -1;
+            StringBuilder sb = new StringBuilder();
+
+            while (position < content.length()
+                    && !isSign(content.charAt(position))
+                    && !Character.isDigit(content.charAt(position)))
+            {
+                position++;
+            }
+            if (position == content.length())
+                return null;
+
+            if (isSign(content.charAt(position)))
+                return Character.toString(content.charAt(position++));
+
+            while (position < content.length() && !isSign(content.charAt(position)))
+            {
+                if (Character.isDigit(content.charAt(position)) || isDecimalDelimiter(content.charAt(position)))
+                    sb.append(content.charAt(position));
+                position++;
+            }
+
+            return sb.toString();
         }
 
-        /**
-         * Check if token is number
-         *
-         * @param s token to check
-         * @return true if token is number
-         */
+        static boolean isSign(char c)
+        {
+            return signs.indexOf(c) != -1;
+        }
+
+        static boolean isOperation(String s)
+        {
+            return s.length() == 1 && operations.contains(s);
+        }
+
         static boolean isNumber(String s)
         {
             try
@@ -171,70 +207,29 @@ public class CalculatorImpl implements Calculator
             }
         }
 
-        /**
-         * Return priority of operation
-         *
-         * @param op operation token
-         * @return priority of operation of it is supported
-         */
+        static boolean isDecimalDelimiter(char c)
+        {
+            return c == decimalDelimiter;
+        }
+
+        static boolean isLeftParentheses(String s)
+        {
+            return s.length() == 1 && leftParentheses.contains(s);
+        }
+
+        static boolean isRightParentheses(String s)
+        {
+            return s.length() == 1 && rightParentheses.contains(s);
+        }
+
         static int getPriority(String op)
         {
-            if (!isOp(op)) throw new IllegalArgumentException();
+            if (!isOperation(op)) throw new IllegalArgumentException();
 
-            if (priority1Ops.indexOf(op) > -1) return 1;
-            if (priority2Ops.indexOf(op) > -1) return 2;
+            if (priority1_Ops.contains(op)) return 1;
+            if (priority2_Ops.contains(op)) return 2;
 
             return 0;
-        }
-
-        /**
-         * Check if token is left parentheses
-         *
-         * @param s token
-         * @return true if token is left parentheses
-         */
-        static boolean isLP(String s)
-        {
-            return s.length() == 1 && lparentheses.indexOf(s) > -1;
-        }
-
-        /**
-         * Check if token is right parentheses
-         *
-         * @param s token
-         * @return true if token is right parentheses
-         */
-        static boolean isRP(String s)
-        {
-            return s.length() == 1 && rparentheses.indexOf(s) > -1;
-        }
-
-
-        /**
-         * @return next token or null
-         */
-        public String next()
-        {
-            StringBuilder sb = new StringBuilder();
-
-            while (position < content.length()
-                    && signs.indexOf(content.charAt(position)) == -1
-                    && digits.indexOf(content.charAt(position)) == -1)
-            {
-                position++;
-            }
-            if (position == content.length()) return null;
-
-            if (signs.indexOf(content.charAt(position)) > -1) return Character.toString(content.charAt(position++));
-
-            while (position < content.length() && signs.indexOf(content.charAt(position)) == -1)
-            {
-                if (digits.indexOf(content.charAt(position)) > -1 || content.charAt(position) == '.')
-                    sb.append(content.charAt(position));
-                position++;
-            }
-
-            return sb.toString();
         }
     }
 }
