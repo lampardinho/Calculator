@@ -17,6 +17,7 @@ public class PlusExpression implements IExpression
     @Override
     public double interpret()
     {
+        //support of unary +
         if (leftExpression == null)
             return rightExpression.interpret();
         
